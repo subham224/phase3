@@ -1,0 +1,68 @@
+/* frontend/src/AnimatedTechBackground.css */
+
+.tech-bg-container {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background-color: #020617; /* Slate-950 equivalent */
+}
+
+/* Background Gradients */
+.tech-bg-gradient-purple {
+  position: absolute;
+  top: -10%;
+  left: -10%;
+  width: 40%;
+  height: 40%;
+  background-color: #a855f7; /* Purple-500 */
+  border-radius: 50%;
+  filter: blur(120px);
+  animation: pulse-glow 8s infinite ease-in-out;
+}
+
+.tech-bg-gradient-cyan {
+  position: absolute;
+  bottom: -10%;
+  right: -10%;
+  width: 40%;
+  height: 40%;
+  background-color: #06b6d4; /* Cyan-500 */
+  border-radius: 50%;
+  filter: blur(120px);
+  animation: pulse-glow 8s infinite ease-in-out;
+  animation-delay: 2s;
+}
+
+/* Grid Overlay */
+.tech-bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+  mask-image: radial-gradient(ellipse at center, black, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black, transparent 80%);
+}
+
+.tech-logo-container {
+  position: absolute;
+}
+
+.tech-logo-image {
+  object-fit: contain;
+  filter: drop-shadow(0 10px 8px rgb(0 0 0 / 0.04)) drop-shadow(0 4px 3px rgb(0 0 0 / 0.1));
+}
+
+.tech-particle {
+  position: absolute;
+  border-radius: 50%;
+  background-color: #22d3ee; /* Cyan-400 */
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.1); }
+}
