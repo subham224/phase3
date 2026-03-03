@@ -105,3 +105,25 @@ class ScanResponse(BaseModel):
 
 class ScanSummaryRequest(BaseModel):
     scanSummary: List[Dict[str, Any]]
+
+# Add this near your other result models in models/schemas.py
+
+class SqlmapVulnerability(BaseModel):
+    parameter: Optional[str] = "Unknown"
+    type: Optional[str] = "Unknown"
+    title: Optional[str] = "Unknown"
+    payload: Optional[str] = "Unknown"
+
+class SqlmapScanResult(BaseModel):
+    vulnerabilities: List[SqlmapVulnerability] = []
+
+# --- Update your existing ScanResponse model to include sqlmap ---
+class ScanResponse(BaseModel):
+    whatweb_info: List[Dict]
+    harvester_info: List[Dict]
+    gobuster_info: List[Dict]
+    nmap_info: Dict
+    wapiti_info: Dict
+    skipfish_info: Dict
+    sqlmap_info: Dict  # <--- NEW FIELD
+    ai_output_files: Dict[str, List[str]]

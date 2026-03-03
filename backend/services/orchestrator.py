@@ -18,6 +18,7 @@ from scanners.wapiti import run_wapiti
 from scanners.skipfish import run_skipfish
 from scanners.subdomains import run_harvester, run_gobuster
 from scanners.nmap import run_nmap_scans
+from scanners.sqlmap import run_sqlmap
 
 async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, websocket: Optional[WebSocket] = None) -> Dict[str, Any]:
     target_url = str(target_url)
@@ -51,6 +52,7 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
         "nmap_info": {},
         "wapiti_info": {},
         "skipfish_info": {},
+        "sqlmap_info": {},
         "ai_output_files": {}
     }
     
@@ -71,7 +73,8 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
         "nmap_prep": 5.0,
         "nmap": 40.0,
         "wapiti": 20.0,
-        "skipfish": 25.0
+        "skipfish": 25.0,
+        "sqlmap": 25.0
     }
 
     # Step 1: WhatWeb
@@ -266,6 +269,22 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
         active_scans[scan_id]["error"] = str(e)
         await update_progress("Nmap Scans failed", 0)
 
+    # Step 7: SQLMap
+    await update_progress("Starting SQLMap", 0)
+    try:
+        sqlmap_results, ai_sqlmap_file = await run_sqlmap(target_url, scan_type, scan_id, update_progress, progress_weights["sqlmap"], timestamp)
+        all_results["sqlmap_info"] = sqlmap_results.model_dump()
+        if ai_sqlmap_file:
+            all_results["ai_output_files"]["sqlmap"] = [os.path.basename(ai_sqlmap_file)]
+        await update_progress("SQLMap completed", 0)
+    except Exception as e:
+        print(f"SQLMap error: {e}")
+        all_results["sqlmap_info"] = {"error": str(e)}
+        active_scans[scan_id]["error"] = str(e)
+        await update_progress("SQLMap failed", 0)
+
     active_scans[scan_id]["status"] = "completed"
     await update_progress("Scan completed", 0)
     return all_results
+
+    

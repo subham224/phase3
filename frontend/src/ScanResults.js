@@ -5,6 +5,7 @@ import NmapResults from './NmapResults';
 import WapitiResults from './WapitiResults';
 import SkipfishResults from './SkipfishResults';
 import AiResponseAccordion from './AiResponseAccordion';
+import SqlmapResults from './SqlmapResults';
 
 // FIX: Use the same logic as App.js to ensure it works in Production (Render) and Local
 const getBackendUrl = () => {
@@ -160,6 +161,17 @@ function ScanResults({ results }) {
       
       {aiLoading && <p style={{textAlign:'center', color:'#666'}}>Loading AI analysis...</p>}
       {aiError && <p style={{textAlign:'center', color:'red'}}>{aiError}</p>}
+
+      {/* SQLMap Results */}
+      {results.sqlmap_info && (
+        <div className="mb-6">
+          <SqlmapResults data={results.sqlmap_info} />
+          <AiResponseAccordion 
+            aiFiles={results.ai_output_files?.sqlmap} 
+            toolName="SQLMap" 
+          />
+        </div>
+      )}
     </>
   );
 }

@@ -87,6 +87,8 @@ async def run_wapiti(target: str, scan_type: ScanType, scan_id: str, update_prog
             "-m", "all,-nikto,-sql,-permanentxss,-wp_enum,-ldap,-wapp,-brute_login_form,-xxe,-xss,-buster,-file,-exec,-log4shell,-spring4shell,-redirect,-timesql,-ssl",
             "-d", "5", "--flush-attacks", "--no-bugreport", "-f", "json", "-o", raw_output_file
         ]
+
+      
         
         # Execute the single Phase 3 Wapiti command
         await wapiti_run_command(commands, scan_id, update_progress, command_increment)

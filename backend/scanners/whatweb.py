@@ -124,7 +124,8 @@ async def run_whatweb(target: str, scan_id: str, update_progress: callable, comm
                 http_status = res.get("http_status")
                 
                 # Only process if it returned a 200 OK status
-                if http_status == 200:
+                # if http_status == 200:
+                if http_status and http_status != 0:
                     def get_plugin_string(plugin_name: str) -> Optional[str]:
                         plugin = plugins.get(plugin_name)
                         if not plugin:
