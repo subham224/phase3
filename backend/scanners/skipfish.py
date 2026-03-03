@@ -156,11 +156,12 @@ async def run_skipfish(target: str, scan_type: ScanType, scan_id: str, update_pr
             with open(filtered_output_file, 'w', encoding='utf-8') as f_out:
                 json.dump([s.model_dump() for s in issue_samples], f_out, indent=4)
             # Generate AI response
-            ai_response = await generate_ai_response("Skipfish", [s.model_dump() for s in issue_samples], target)
-            with open(ai_output_file, 'w', encoding='utf-8') as f_out:
-                json.dump(ai_response, f_out, indent=4)
+            # ai_response = await generate_ai_response("Skipfish", [s.model_dump() for s in issue_samples], target)
+            # with open(ai_output_file, 'w', encoding='utf-8') as f_out:
+            #     json.dump(ai_response, f_out, indent=4)
                 
-        return SkipfishScanResult(issue_samples=issue_samples), ai_output_file
+        return SkipfishScanResult(issue_samples=issue_samples),None
+        # ai_output_file
     except Exception as e:
         print(f"Error running Skipfish: {e}")
         await update_progress("Skipfish failed", 0)

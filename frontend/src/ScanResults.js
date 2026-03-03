@@ -7,15 +7,10 @@ import SkipfishResults from './SkipfishResults';
 import AiResponseAccordion from './AiResponseAccordion';
 import SqlmapResults from './SqlmapResults';
 
-// FIX: Use the same logic as App.js to ensure it works in Production (Render) and Local
 const getBackendUrl = () => {
-  // 1. If the Env Var is set (Best practice for Render), use it.
   if (process.env.REACT_APP_API_URL) {
     return process.env.REACT_APP_API_URL;
   }
-  
-  // 2. If running locally (hostname is localhost or IP), assume port 8000.
-  //    But if running in prod without env var, this might still break if port is 80/443.
   const hostname = window.location.hostname;
   return `http://${hostname}:8000`;
 };
@@ -25,154 +20,145 @@ function ScanResults({ results }) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState(null);
 
+  // Fetch the SINGLE Executive Summary AI File
   useEffect(() => {
-    if (!results || !results.ai_output_files) {
+    if (!results || !results.ai_output_files || !results.ai_output_files.executive_summary) {
       return;
     }
 
     const fetchAiData = async () => {
       setAiLoading(true);
       setAiError(null);
-      const fetchedData = {};
-      const filePaths = results.ai_output_files;
 
       try {
-        const promises = [];
-        const tools = [];
+        const execSummaryFile = results.ai_output_files.executive_summary[0];
+        
+        // Ensure path starts with scans/ depending on how backend sent it
+        const relativePath = execSummaryFile.startsWith('scans/') 
+          ? execSummaryFile 
+          : `scans/${execSummaryFile}`;
 
-        for (const tool in filePaths) {
-          if (filePaths[tool] && filePaths[tool].length > 0) {
-            // Backend sends "scans/filename.json" (Relative Path)
-            const relativePath = filePaths[tool][0];
-            const url = `${getBackendUrl()}/${relativePath}`;
-            
-            const fetchPromise = fetch(url)
-              .then(async (response) => {
-                if (!response.ok) {
-                  console.warn(`[ScanResults] Failed to fetch AI data for ${tool}: ${response.status}`);
-                  return null;
-                }
-                return response.json();
-              })
-              .catch((err) => {
-                console.warn(`[ScanResults] Network error fetching ${tool}:`, err);
-                return null;
-              });
-
-            promises.push(fetchPromise);
-            tools.push(tool);
-          }
+        const url = `${getBackendUrl()}/${relativePath}`;
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
+        
+        const data = await response.json();
+        setAiData(data);
 
-        const responses = await Promise.all(promises);
-
-        responses.forEach((data, index) => {
-          if (data) {
-            fetchedData[tools[index]] = data;
-          }
-        });
-
-        setAiData(fetchedData);
       } catch (err) {
-        console.error("Critical error in AI fetch logic:", err);
-        setAiError("Failed to initialize AI data loaders.");
+        console.error("Critical error fetching Executive AI summary:", err);
+        setAiError("Failed to load AI Executive Summary.");
       } finally {
         setAiLoading(false);
       }
-      
     };
 
     fetchAiData();
   }, [results]);
 
-  const getAiResponse = (toolName) => {
-    // If backend returned { "error": "..." } instead of threats, log it or handle it.
-    // Currently, we just return safe access to threats.
-    return aiData[toolName]?.threats;
-  };
-
-
-  // NEW: Helper to get the error message from the backend JSON
-  const getAiBackendError = (toolName) => {
-    return aiData[toolName]?.error;
-  };
-
   if (!results) {
     return <div className="card no-results-message"><p>No scan results available.</p></div>;
   }
 
+  // Extract threats or API quota errors from the fetched data
+  const threats = aiData?.threats;
+  const backendAiError = aiData?.error;
+
   return (
-    <>
+    <div className="scan-results-container">
+      {/* <h2 style={{ fontSize: '1.8rem', fontWeight: 'bold', marginBottom: '20px', color: '#60a5fa' }}>
+        Pentest Report: {results.target}
+      </h2> */}
+
+      {/* ============================================== */}
+      {/* 🌟 AI EXECUTIVE SUMMARY (TOP LEVEL) 🌟 */}
+      {/* ============================================== */}
+      {aiLoading && <p style={{textAlign:'center', color:'#9ca3af', marginBottom: '20px'}}>Analyzing Combined Pentest Data with AI...</p>}
+      {aiError && <p style={{textAlign:'center', color:'#ef4444', marginBottom: '20px'}}>{aiError}</p>}
+
+      {/* Handle Gemini Quota Limit Error Display */}
+      {backendAiError && (
+        <div className="card error-message" style={{ color: '#fbbf24', padding: '15px', marginBottom: '20px', border: '1px solid #b45309', backgroundColor: '#451a03', borderRadius: '8px' }}>
+          <strong>AI Analysis Skipped: </strong> {backendAiError}
+        </div>
+      )}
+
+      {/* Render AI Threats Accordion */}
+      {/* {threats && threats.length > 0 && (
+        <div className="card" style={{ marginBottom: '30px', border: '1px solid #4f46e5', backgroundColor: '#1e1b4b' }}>
+          <h3 style={{ color: '#818cf8', fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '15px' }}>
+            AI Executive Summary
+          </h3>
+          <AiResponseAccordion 
+            title="Combined Threat Analysis" 
+            vulnerabilities={threats} 
+          />
+        </div>
+      )} */}
+
+
+      {/* ============================================== */}
+      {/* RAW DETAILED TOOL OUTPUTS BELOW */}
+      {/* ============================================== */}
+      {/* <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginTop: '40px', marginBottom: '20px', borderBottom: '1px solid #374151', paddingBottom: '10px' }}>
+        Detailed Raw Outputs
+      </h3> */}
+
       {/* 1. WhatWeb */}
-      <div className="card">
-        <WhatWebResults data={results.whatweb_info} />
-        {getAiResponse('whatweb') && (
-            <AiResponseAccordion title="WhatWeb AI Analysis" vulnerabilities={getAiResponse('whatweb')} />
-        )}
-      </div>
+      {results.whatweb_info && results.whatweb_info.length > 0 && (
+        <div className="card">
+          <WhatWebResults data={results.whatweb_info} />
+        </div>
+      )}
 
       {/* 2. Recon (Harvester/Gobuster) */}
-      <div className="card">
-        <HarvesterGobusterResults
-          harvesterData={results.harvester_info}
-          gobusterData={results.gobuster_info}
-        />
-        {/* Check for either harvester OR gobuster AI output */}
-        {getAiResponse('harvester') && (
-            <AiResponseAccordion title="Harvester AI Analysis" vulnerabilities={getAiResponse('harvester')} />
-        )}
-        {getAiResponse('gobuster') && (
-            <AiResponseAccordion title="Gobuster AI Analysis" vulnerabilities={getAiResponse('gobuster')} />
-        )}
-      </div>
-
-      {/* 3. Nmap */}
-      <div className="card">
-         <NmapResults data={results.nmap_info} />
-        {/* {getAiResponse('nmap') && (
-            <AiResponseAccordion title="Nmap AI Analysis" vulnerabilities={getAiResponse('nmap')} />
-        )} */}
-
-        {/* Display Error if Backend sent one */}
-        {getAiBackendError('nmap') && (
-            <div className="error-message" style={{color: 'red', padding: '10px'}}>
-                <strong>AI Error:</strong> {getAiBackendError('nmap')}
-            </div>
-        )}
-
-        {/* Display Accordion only if threats exist */}
-        {getAiResponse('nmap') && (
-            <AiResponseAccordion title="Nmap AI Analysis" vulnerabilities={getAiResponse('nmap')} />
-        )}
-      </div>
-
-      {/* 4. Wapiti & Skipfish */}
-      <div className="card">
-        <WapitiResults data={results.wapiti_info} />
-        {getAiResponse('wapiti') && (
-            <AiResponseAccordion title="Wapiti AI Analysis" vulnerabilities={getAiResponse('wapiti')} />
-        )}
-
-        <SkipfishResults data={results.skipfish_info} />
-        {getAiResponse('skipfish') && (
-            <AiResponseAccordion title="Skipfish AI Analysis" vulnerabilities={getAiResponse('skipfish')} />
-        )}
-      </div>
-      
-      {aiLoading && <p style={{textAlign:'center', color:'#666'}}>Loading AI analysis...</p>}
-      {aiError && <p style={{textAlign:'center', color:'red'}}>{aiError}</p>}
-
-      {/* SQLMap Results */}
-      {results.sqlmap_info && (
-        <div className="mb-6">
-          <SqlmapResults data={results.sqlmap_info} />
-          <AiResponseAccordion 
-            aiFiles={results.ai_output_files?.sqlmap} 
-            toolName="SQLMap" 
+      {(results.harvester_info?.length > 0 || results.gobuster_info?.length > 0) && (
+        <div className="card">
+          <HarvesterGobusterResults
+            harvesterData={results.harvester_info}
+            gobusterData={results.gobuster_info}
           />
         </div>
       )}
-    </>
+
+      {/* 3. Nmap */}
+      {results.nmap_info && Object.keys(results.nmap_info).length > 0 && (
+        <div className="card">
+          <NmapResults data={results.nmap_info} />
+        </div>
+      )}
+
+      {/* 4. Wapiti & Skipfish */}
+      <div className="card">
+        {results.wapiti_info && <WapitiResults data={results.wapiti_info} />}
+        {results.skipfish_info && <SkipfishResults data={results.skipfish_info} />}
+      </div>
+
+      {/* 5. SQLMap */}
+      {results.sqlmap_info && (
+        <div className="card">
+          <SqlmapResults data={results.sqlmap_info} />
+        </div>
+      )}
+
+      {/* Render AI Threats Accordion */}
+      {threats && threats.length > 0 && (
+        <div className="card" style={{ marginBottom: '30px', border: '1px solid #4f46e5', backgroundColor: '#1e1b4b' }}>
+          {/* <h3 style={{ color: '#818cf8', fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '15px' }}>
+            AI Executive Summary
+          </h3> */}
+          <AiResponseAccordion 
+            title="Combined Threat Analysis" 
+            vulnerabilities={threats} 
+          />
+        </div>
+      )}
+
+
+    </div>
   );
 }
 

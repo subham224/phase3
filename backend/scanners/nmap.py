@@ -257,11 +257,12 @@ async def run_nmap_scans(scan_type: ScanType, scan_id: str, update_progress: cal
             with open(output_filename, 'w', encoding='utf-8') as f_ou:
                 json.dump(nmap_results, f_ou, indent=4)
 
-            ai_response = await generate_ai_response("Nmap", nmap_results, target_list_path)
-            with open(ai_output_file, 'w', encoding='utf-8') as f_out:
-                json.dump(ai_response, f_out, indent=4)
+            # ai_response = await generate_ai_response("Nmap", nmap_results, target_list_path)
+            # with open(ai_output_file, 'w', encoding='utf-8') as f_out:
+            #     json.dump(ai_response, f_out, indent=4)
                 
-            return nmap_results, ai_output_file
+            return nmap_results,None
+        # ai_output_file
         
         # If Nmap generated absolutely no results, return None for the file path
         return {}, None

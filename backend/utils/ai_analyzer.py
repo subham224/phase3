@@ -2,83 +2,77 @@
 
 import json
 import re
-from typing import List, Dict, Any
+from typing import Dict, Any
 import google.generativeai as genai
 
-# Import and configure the AI key
 from core.config import GEMINI_API_KEY
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-async def generate_ai_response(tool_name: str, filtered_data: List[Dict[str, Any]], target: str) -> Dict[str, Any]:
-    """Generates AI response for filtered data and returns it as a dictionary."""
+async def generate_ai_response(target: str, combined_results: Dict[str, Any]) -> Dict[str, Any]:
+    """Generates a single Executive Summary AI response for the entire pentest."""
+    response = None 
+    
     try:
-        summary_text = json.dumps(filtered_data, indent=2)
+        # Convert the massive results dict to JSON string
+        summary_text = json.dumps(combined_results, indent=2)
+        
         prompt = f"""
-        Provide me all the major possible threats which may occur due to the data in {summary_text}.Output should be in
-    json format with fields in json being Vulnerability, Description, Impact, Remediation
+        You are an expert Senior Penetration Tester. I have performed an automated penetration test on the target: {target}.
+        
+        Here are the combined JSON results from multiple security scanners (Nmap, Wapiti, Skipfish, WhatWeb, Harvester, SQLMap):
+        {summary_text}
 
-Output the analysis in JSON format with the following fields for each identified threat:
-- Vulnerability: Name of the vulnerability or issue.
-- Description: Detailed explanation of the vulnerability.
-- Impact: Potential impact of the vulnerability on the system or application.
-- Remediation: Steps or recommendations to mitigate or fix the vulnerability.
+        Analyze these combined findings. Ignore minor informational warnings. Focus on the real threats. 
+        Correlate the data if possible (e.g., an open port from Nmap relating to a Wapiti vulnerability).
 
-Ensure the output is a JSON array of objects, each containing the above fields. Return only the JSON array, without any markdown or code fences.
-"""
-        # Note: Updated to gemini-2.5-flash as it was in your original code
+        Output an Executive Summary in JSON format containing the major threats. Use this exact schema:
+        [
+          {{
+            "Vulnerability": "Name of the issue",
+            "Description": "Detailed explanation of the vulnerability and where it was found",
+            "Impact": "Potential business or technical impact",
+            "Remediation": "How to fix it"
+          }}
+        ]
+
+        Return ONLY the JSON array, without any markdown fences like ```json.
+        """
+        
         model = genai.GenerativeModel('gemini-2.5-flash')
         response = await model.generate_content_async(prompt)
         
-        # Clean the response to extract JSON content
         cleaned_response = response.text.strip()
         
-        # Remove markdown code fences if present
+        # Clean markdown fences
         json_pattern = re.compile(r'```(?:json)?\n(.*?)\n```', re.DOTALL)
         match = json_pattern.match(cleaned_response)
         if match:
             cleaned_response = match.group(1).strip()
         else:
-            # Remove any leading/trailing ``` or other non-JSON content
             cleaned_response = re.sub(r'^```.*?\n|\n```$', '', cleaned_response, flags=re.MULTILINE).strip()
             
-        try:
-
-            # This regex escapes any backslash that isn't followed by a valid JSON escape character
-            cleaned_response = re.sub(r'\\(?![/"\\bfnrtu])', r'\\\\', cleaned_response)
+        # Fix unescaped backslashes
+        cleaned_response = re.sub(r'\\(?![/"\\bfnrtu])', r'\\\\', cleaned_response)
             
-            # Parse the cleaned response as JSON
-            # ai_output = json.loads(cleaned_response)
+        try:
             ai_output = json.loads(cleaned_response, strict=False)
             if not isinstance(ai_output, list):
-                print(f"AI response for {tool_name} is not a list: {cleaned_response}")
                 return {"error": "AI response is not a valid JSON array", "raw_response": response.text}
-                
-            # Validate that each item has required fields
-            required_fields = {"Vulnerability", "Description", "Impact", "Remediation"}
-            for item in ai_output:
-                if not isinstance(item, dict) or not all(field in item for field in required_fields):
-                    print(f"Invalid item in AI response for {tool_name}: {item}")
-                    return {
-                        "error": "AI response contains invalid items missing required fields",
-                        "raw_response": response.text,
-                        "cleaned_response": cleaned_response
-                    }
-                    
             return {"threats": ai_output}
             
         except json.JSONDecodeError as e:
-            print(f"Error decoding AI response for {tool_name}: {e}")
-            return {
-                "error": f"Invalid JSON format in AI response: {e}",
-                "raw_response": response.text,
-                "cleaned_response": cleaned_response
-            }
+            print(f"Error decoding Executive Summary AI JSON: {e}")
+            return {"error": f"Invalid JSON format: {e}", "raw_response": response.text}
             
     except Exception as e:
-        print(f"Error generating AI response for {tool_name}: {e}")
+        error_msg = str(e)
+        if "429" in error_msg or "quota" in error_msg.lower():
+            print(f"[AI Warning] Gemini Quota Exceeded. Executive Summary skipped.")
+            return {"error": "AI analysis skipped due to Google API free-tier quota limits (20 requests/day)."}
+            
+        print(f"Error generating Executive AI response: {error_msg}")
         return {
-            "error": str(e),
-            "raw_response": response.text if hasattr(response, 'text') else None,
-            "cleaned_response": None
+            "error": error_msg,
+            "raw_response": response.text if response and hasattr(response, 'text') else None
         }

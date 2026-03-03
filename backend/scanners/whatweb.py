@@ -166,12 +166,13 @@ async def run_whatweb(target: str, scan_id: str, update_progress: callable, comm
             with open(filtered_output_file, 'w', encoding='utf-8') as f_out:
                 json.dump([r.model_dump() for r in filtered_results], f_out, indent=4)
             # Generate AI response
-            ai_response = await generate_ai_response("WhatWeb", [r.model_dump() for r in filtered_results], target)
-            with open(ai_output_file, 'w', encoding='utf-8') as f_out:
-                json.dump(ai_response, f_out, indent=4)
+            # ai_response = await generate_ai_response("WhatWeb", [r.model_dump() for r in filtered_results], target)
+            # with open(ai_output_file, 'w', encoding='utf-8') as f_out:
+            #     json.dump(ai_response, f_out, indent=4)
                 
             # Only return the AI file path if results were found and the file was saved
-            return filtered_results, ai_output_file
+            return filtered_results, None
+        # ai_output_file
             
         # If no valid results were found, return None to prevent a 404 error
         return [], None

@@ -1,6 +1,7 @@
 # services/orchestrator.py
 
 import asyncio
+import json
 import os
 from urllib.parse import urlparse
 from datetime import datetime
@@ -283,8 +284,50 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
         active_scans[scan_id]["error"] = str(e)
         await update_progress("SQLMap failed", 0)
 
+
+    # ... previous steps (Nmap, SQLmap, etc.)
+
+    # ==========================================
+    # STEP 8: GENERATE EXECUTIVE AI SUMMARY
+    # ==========================================
+    await update_progress("Generating AI Executive Summary", 0)
+    try:
+        from utils.ai_analyzer import generate_ai_response
+        
+        # We filter out empty results so we don't waste AI tokens
+        ai_payload = {
+            "target": target_url,
+            "whatweb": [w for w in all_results.get("whatweb_info", []) if "error" not in w],
+            "wapiti": all_results.get("wapiti_info", {}).get("vulnerabilities", []),
+            "skipfish": all_results.get("skipfish_info", {}).get("issue_samples", []),
+            "nmap": all_results.get("nmap_info", {}),
+            "sqlmap": all_results.get("sqlmap_info", {}).get("vulnerabilities", [])
+        }
+
+        # Make the ONE AND ONLY Gemini API call
+        ai_response = await generate_ai_response(target_url, ai_payload)
+        
+        # Save the executive summary
+        ai_summary_file = os.path.join(SCAN_OUTPUT_DIR, f"ai_executive_summary_{scan_id}_{timestamp}.json")
+        with open(ai_summary_file, 'w', encoding='utf-8') as f_out:
+            json.dump(ai_response, f_out, indent=4)
+            
+        # Add it to the final payload
+        all_results["ai_output_files"]["executive_summary"] = [os.path.basename(ai_summary_file)]
+        
+        await update_progress("AI Summary Generated", 0)
+        
+    except Exception as e:
+        print(f"Error generating executive AI summary: {e}")
+        all_results["ai_output_files"]["executive_summary"] = []
+
+    # Finalize Scan
     active_scans[scan_id]["status"] = "completed"
     await update_progress("Scan completed", 0)
     return all_results
+
+    # active_scans[scan_id]["status"] = "completed"
+    # await update_progress("Scan completed", 0)
+    # return all_results
 
     

@@ -104,11 +104,12 @@ async def run_wapiti(target: str, scan_type: ScanType, scan_id: str, update_prog
             with open(filtered_output_file, 'w', encoding='utf-8') as f_out:
                 json.dump([v.model_dump() for v in deduped_vulns], f_out, indent=4)
             # Generate AI response
-            ai_response = await generate_ai_response("Wapiti", [v.model_dump() for v in deduped_vulns], target)
-            with open(ai_output_file, 'w', encoding='utf-8') as f_out:
-                json.dump(ai_response, f_out, indent=4)
+            # ai_response = await generate_ai_response("Wapiti", [v.model_dump() for v in deduped_vulns], target)
+            # with open(ai_output_file, 'w', encoding='utf-8') as f_out:
+            #     json.dump(ai_response, f_out, indent=4)
                 
-            return WapitiScanResult(vulnerabilities=deduped_vulns), ai_output_file
+            return WapitiScanResult(vulnerabilities=deduped_vulns), None
+        # ai_output_file
             
         # If no vulnerabilities found, return None for the file path to prevent a 404
         return WapitiScanResult(vulnerabilities=[]), None
