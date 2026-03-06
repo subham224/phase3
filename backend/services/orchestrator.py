@@ -20,6 +20,9 @@ from scanners.skipfish import run_skipfish
 from scanners.subdomains import run_harvester, run_gobuster
 from scanners.nmap import run_nmap_scans
 from scanners.sqlmap import run_sqlmap
+from scanners.metasploit import execute_commands
+from services.metasploit_ai import generate_msf_commands
+from services.metasploit_report import generate_vulnerability_report
 
 async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, websocket: Optional[WebSocket] = None) -> Dict[str, Any]:
     target_url = str(target_url)
@@ -47,15 +50,16 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
 
     await clear_scan_outputs()
     all_results = {
-        "whatweb_info": [],
-        "harvester_info": [],
-        "gobuster_info": [],
-        "nmap_info": {},
-        "wapiti_info": {},
-        "skipfish_info": {},
-        "sqlmap_info": {},
-        "ai_output_files": {}
-    }
+    "whatweb_info": [],
+    "harvester_info": [],
+    "gobuster_info": [],
+    "nmap_info": {},
+    "wapiti_info": {},
+    "skipfish_info": {},
+    "sqlmap_info": {},
+    "metasploit_info": {},   # NEW
+    "ai_output_files": {}
+}
     
     parsed_url = urlparse(target_url)
     exact_domain = parsed_url.netloc.split(':')[0] # Example: nis.nist.edu
@@ -75,7 +79,8 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
         "nmap": 40.0,
         "wapiti": 20.0,
         "skipfish": 25.0,
-        "sqlmap": 25.0
+        "sqlmap": 25.0,
+        "metasploit": 15.0
     }
 
     # Step 1: WhatWeb
@@ -286,6 +291,45 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
 
 
     # ... previous steps (Nmap, SQLmap, etc.)
+        # ==========================================
+    # STEP 8: METASPLOIT AUTOMATED EXPLOITATION
+    # ==========================================
+    await update_progress("Starting Metasploit exploitation phase", 0)
+
+    try:
+
+        # Prepare payload for AI module selection
+        metasploit_input = {
+            "target": target_url,
+            "whatweb": all_results.get("whatweb_info", []),
+            "nmap": all_results.get("nmap_info", {}),
+            "sqlmap": all_results.get("sqlmap_info", {}),
+            "wapiti": all_results.get("wapiti_info", {}),
+            "skipfish": all_results.get("skipfish_info", {})
+        }
+
+        # Generate commands via Gemini
+        msf_commands = await generate_msf_commands(metasploit_input)
+
+        # Execute commands
+        msf_results = await execute_commands(msf_commands, scan_id)
+
+        # AI analysis of raw output
+        msf_report = await generate_vulnerability_report(msf_results)
+
+        all_results["metasploit_info"] = {
+            "commands": msf_commands,
+            "results": msf_results,
+            "report": msf_report
+        }
+
+        await update_progress("Metasploit phase completed", 5)
+
+    except Exception as e:
+        print(f"Metasploit error: {e}")
+        all_results["metasploit_info"] = {"error": str(e)}
+        active_scans[scan_id]["error"] = str(e)
+        await update_progress("Metasploit phase failed", 0)
 
     # ==========================================
     # STEP 8: GENERATE EXECUTIVE AI SUMMARY
@@ -326,8 +370,6 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
     await update_progress("Scan completed", 0)
     return all_results
 
-    # active_scans[scan_id]["status"] = "completed"
-    # await update_progress("Scan completed", 0)
-    # return all_results
+   
 
     

@@ -117,6 +117,25 @@ class SqlmapVulnerability(BaseModel):
 class SqlmapScanResult(BaseModel):
     vulnerabilities: List[SqlmapVulnerability] = []
 
+
+# --- Metasploit Models ---
+
+class MetasploitCommand(BaseModel):
+    command: str
+
+
+class MetasploitExecution(BaseModel):
+    command_executed: str
+    raw_output: str
+
+
+class MetasploitReport(BaseModel):
+    Vulnerability: str
+    Description: str
+    Impact: str
+    Sensitive_information_found: str
+    Remediation: str
+
 # --- Update your existing ScanResponse model to include sqlmap ---
 class ScanResponse(BaseModel):
     whatweb_info: List[Dict]
@@ -125,5 +144,7 @@ class ScanResponse(BaseModel):
     nmap_info: Dict
     wapiti_info: Dict
     skipfish_info: Dict
-    sqlmap_info: Dict  # <--- NEW FIELD
+    sqlmap_info: Dict
+    metasploit_info: Dict   # NEW
     ai_output_files: Dict[str, List[str]]
+

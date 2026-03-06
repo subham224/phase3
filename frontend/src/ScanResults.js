@@ -6,6 +6,7 @@ import WapitiResults from './WapitiResults';
 import SkipfishResults from './SkipfishResults';
 import AiResponseAccordion from './AiResponseAccordion';
 import SqlmapResults from './SqlmapResults';
+import MetasploitResults from "./MetasploitResults";
 
 const getBackendUrl = () => {
   if (process.env.REACT_APP_API_URL) {
@@ -86,26 +87,7 @@ function ScanResults({ results }) {
         </div>
       )}
 
-      {/* Render AI Threats Accordion */}
-      {/* {threats && threats.length > 0 && (
-        <div className="card" style={{ marginBottom: '30px', border: '1px solid #4f46e5', backgroundColor: '#1e1b4b' }}>
-          <h3 style={{ color: '#818cf8', fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '15px' }}>
-            AI Executive Summary
-          </h3>
-          <AiResponseAccordion 
-            title="Combined Threat Analysis" 
-            vulnerabilities={threats} 
-          />
-        </div>
-      )} */}
-
-
-      {/* ============================================== */}
-      {/* RAW DETAILED TOOL OUTPUTS BELOW */}
-      {/* ============================================== */}
-      {/* <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginTop: '40px', marginBottom: '20px', borderBottom: '1px solid #374151', paddingBottom: '10px' }}>
-        Detailed Raw Outputs
-      </h3> */}
+     
 
       {/* 1. WhatWeb */}
       {results.whatweb_info && results.whatweb_info.length > 0 && (
@@ -157,6 +139,12 @@ function ScanResults({ results }) {
         </div>
       )}
 
+      {/* 6. Metasploit Vulnerabilities */}
+      {results.metasploit_info && (
+        <div className="card">
+          <MetasploitResults metasploitResults={results.metasploit_info} />
+        </div>
+      )}
 
     </div>
   );
