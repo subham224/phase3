@@ -1,68 +1,77 @@
-/* frontend/src/AnimatedTechBackground.css */
+/* frontend/src/AnimatedPacketFlow.css */
 
-.tech-bg-container {
+.packet-flow-container {
   position: fixed;
   inset: 0;
   z-index: -1;
   overflow: hidden;
   pointer-events: none;
-  background-color: #020617; /* Slate-950 equivalent */
+  background-color: #060b14; /* Extremely dark navy blue */
 }
 
-/* Background Gradients */
-.tech-bg-gradient-purple {
-  position: absolute;
-  top: -10%;
-  left: -10%;
-  width: 40%;
-  height: 40%;
-  background-color: #a855f7; /* Purple-500 */
-  border-radius: 50%;
-  filter: blur(120px);
-  animation: pulse-glow 8s infinite ease-in-out;
-}
-
-.tech-bg-gradient-cyan {
-  position: absolute;
-  bottom: -10%;
-  right: -10%;
-  width: 40%;
-  height: 40%;
-  background-color: #06b6d4; /* Cyan-500 */
-  border-radius: 50%;
-  filter: blur(120px);
-  animation: pulse-glow 8s infinite ease-in-out;
-  animation-delay: 2s;
-}
-
-/* Grid Overlay */
-.tech-bg-grid {
+/* Authentic SIEM screen noise */
+.noise-overlay {
   position: absolute;
   inset: 0;
-  background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 50px 50px;
-  mask-image: radial-gradient(ellipse at center, black, transparent 80%);
-  -webkit-mask-image: radial-gradient(ellipse at center, black, transparent 80%);
+  z-index: 10;
+  opacity: 0.03; /* Barely perceptible */
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  pointer-events: none;
 }
 
-.tech-logo-container {
+/* Soft, diffuse background light to prevent pure black flatness */
+.ambient-teal-glow {
   position: absolute;
-}
-
-.tech-logo-image {
-  object-fit: contain;
-  filter: drop-shadow(0 10px 8px rgb(0 0 0 / 0.04)) drop-shadow(0 4px 3px rgb(0 0 0 / 0.1));
-}
-
-.tech-particle {
-  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 80vw;
+  height: 80vh;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.03) 0%, rgba(6, 11, 20, 0) 70%);
   border-radius: 50%;
-  background-color: #22d3ee; /* Cyan-400 */
 }
 
-@keyframes pulse-glow {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.1); }
+/* Lane Positioning */
+.lanes-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.traffic-lane {
+  position: absolute;
+  width: 100%;
+  height: 2px; /* Extremely thin inspection area */
+  display: flex;
+  align-items: center;
+}
+
+/* The horizontal track line */
+.lane-track {
+  position: absolute;
+  width: 100%;
+  height: 1px;
+  background-color: #2dd4bf; /* Teal-400 */
+}
+
+/* Base Packet Styling */
+.packet {
+  position: absolute;
+  height: 1px; /* Razor thin */
+  border-radius: 1px;
+}
+
+/* Standard Traffic (Quiet, precise) */
+.packet-standard {
+  background-color: #2dd4bf;
+  box-shadow: 0 0 4px 0 rgba(45, 212, 191, 0.4);
+}
+
+/* Anomalous Traffic (Slightly brighter, warning color) */
+.packet-anomaly {
+  background-color: #fbbf24; /* Amber-400 */
+  height: 2px; /* Slightly thicker to draw the eye subtly */
+  box-shadow: 0 0 6px 0 rgba(251, 191, 36, 0.6);
+  z-index: 5;
 }

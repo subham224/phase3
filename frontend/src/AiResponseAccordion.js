@@ -17,7 +17,7 @@ const AiResponseAccordion = ({ title, vulnerabilities }) => {
   return (
     <div className="ai-response-container">
       <div className="accordion-header" onClick={toggleAccordion}>
-        <h3>{title} AI Vulnerability Analysis</h3>
+        <h3>AI Vulnerability Analysis</h3>
         <span className={`accordion-icon ${isOpen ? 'open' : ''}`}>&#9660;</span>
       </div>
       {isOpen && (
