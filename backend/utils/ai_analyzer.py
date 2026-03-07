@@ -37,7 +37,7 @@ async def generate_ai_response(target: str, combined_results: Dict[str, Any]) ->
 
         # Return ONLY the JSON array, without any markdown fences like ```json.
         # """
-        print(summary_text)
+        # print(summary_text)
         prompt = f"""
 You are an expert Senior Penetration Tester.
 

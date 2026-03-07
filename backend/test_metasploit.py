@@ -48,28 +48,28 @@ async def run_metasploit_test():
     # 3. Test Phase 2: Execution in msfconsole
     print("\n[*] 2. Executing commands in Metasploit (This may take a minute)...")
     test_scan_id = "test-unit-1234"
-    # try:
-    #     msf_results = await execute_commands(msf_commands, test_scan_id)
-    #     print(f"[+] Successfully executed {len(msf_results)} commands. Sample output of first command:")
-    #     if msf_results:
-    #          print(msf_results[0].get("raw_output", "")[:200] + "...\n")
-    # except Exception as e:
-    #     print(f"[-] Metasploit Execution Failed: {e}")
-    #     return
+    try:
+        msf_results = await execute_commands(msf_commands, test_scan_id)
+        print(f"[+] Successfully executed {len(msf_results)} commands. Sample output of first command:")
+        if msf_results:
+             print(msf_results[0].get("raw_output", "")[:200] + "...\n")
+    except Exception as e:
+        print(f"[-] Metasploit Execution Failed: {e}")
+        return
 
-    # ... (End of Phase 2) ...
+    
 
     # INJECT FAKE SUCCESSFUL METASPLOIT DATA FOR TESTING
-    msf_results = [
-        {
-            "command_executed": "use auxiliary/scanner/http/http_version; set RHOSTS 18.217.186.208; run; exit",
-            "raw_output": "[+] 18.217.186.208:80 Apache/2.4.41 (Ubuntu) PHP/7.4.3 is vulnerable to CVE-XXXX"
-        },
-        {
-            "command_executed": "use auxiliary/scanner/http/robots_txt; set RHOSTS 18.217.186.208; run; exit",
-            "raw_output": "[+] [18.217.186.208] /robots.txt found with 2 disallowed entries: /admin_panel/ /config.bak"
-        }
-    ]
+    # msf_results = [
+    #     {
+    #         "command_executed": "use auxiliary/scanner/http/http_version; set RHOSTS 18.217.186.208; run; exit",
+    #         "raw_output": "[+] 18.217.186.208:80 Apache/2.4.41 (Ubuntu) PHP/7.4.3 is vulnerable to CVE-XXXX"
+    #     },
+    #     {
+    #         "command_executed": "use auxiliary/scanner/http/robots_txt; set RHOSTS 18.217.186.208; run; exit",
+    #         "raw_output": "[+] [18.217.186.208] /robots.txt found with 2 disallowed entries: /admin_panel/ /config.bak"
+    #     }
+    # ]
 
     # 4. Test Phase 3: AI Report Generation
     print("\n[*] 3. Sending raw output back to Gemini for reporting...")

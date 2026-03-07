@@ -310,12 +310,15 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
 
         # Generate commands via Gemini
         msf_commands = await generate_msf_commands(metasploit_input)
+        print(msf_commands)
 
         # Execute commands
         msf_results = await execute_commands(msf_commands, scan_id)
+        print(msf_results)
 
         # AI analysis of raw output
         msf_report = await generate_vulnerability_report(msf_results)
+        print(msf_report)
 
         all_results["metasploit_info"] = {
             "commands": msf_commands,

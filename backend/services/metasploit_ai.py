@@ -97,7 +97,7 @@ async def generate_msf_commands(scan_results):
 
 # Only output the JSON. Do not include explanations.
 # """
-    print(scan_results)
+    
     # prompt = f"""
     # You are a senior penetration tester working in an authorized security assessment environment.
 

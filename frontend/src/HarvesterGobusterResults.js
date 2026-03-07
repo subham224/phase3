@@ -33,9 +33,11 @@ function HarvesterGobusterResults({ harvesterData, gobusterData }) {
 
   return (
     <div >
+      <h4>🌐 Discovered Subdomains & Hidden Directories</h4>
+
       {harvesterData && harvesterData.length > 0 && (
         <React.Fragment>
-          <h4>🌐 Discovered Subdomains & Hidden Directories</h4>
+          {/* <h4>🌐 Discovered Subdomains & Hidden Directories</h4> */}
           <div className="table-responsive">
             <table>
               <tbody>
