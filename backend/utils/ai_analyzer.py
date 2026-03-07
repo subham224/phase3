@@ -17,27 +17,73 @@ async def generate_ai_response(target: str, combined_results: Dict[str, Any]) ->
         # Convert the massive results dict to JSON string
         summary_text = json.dumps(combined_results, indent=2)
         
+        # prompt = f"""
+        # You are an expert Senior Penetration Tester.
+        # Here are the combined JSON results from multiple security scanners (Nmap, Wapiti, Skipfish, WhatWeb, Harvester, SQLMap):
+        # {summary_text}
+
+        # Analyze these combined findings. Ignore minor informational warnings. Focus on the real threats. 
+        # Correlate the data if possible (e.g., an open port from Nmap relating to a Wapiti vulnerability).
+
+        # Output an Executive Summary in JSON format containing the major threats. Use this exact schema:
+        # [
+        #   {{
+        #     "Vulnerability": "Name of the issue",
+        #     "Description": "Detailed explanation of the vulnerability and where it was found",
+        #     "Impact": "Potential business or technical impact",
+        #     "Remediation": "How to fix it"
+        #   }}
+        # ]
+
+        # Return ONLY the JSON array, without any markdown fences like ```json.
+        # """
+        print(summary_text)
         prompt = f"""
-        You are an expert Senior Penetration Tester. I have performed an automated penetration test on the target: {target}.
-        
-        Here are the combined JSON results from multiple security scanners (Nmap, Wapiti, Skipfish, WhatWeb, Harvester, SQLMap):
-        {summary_text}
+You are an expert Senior Penetration Tester.
 
-        Analyze these combined findings. Ignore minor informational warnings. Focus on the real threats. 
-        Correlate the data if possible (e.g., an open port from Nmap relating to a Wapiti vulnerability).
+You are given combined JSON results from multiple security scanners:
+- Nmap
+- Wapiti
+- Skipfish
+- WhatWeb
+- theHarvester
+- SQLMap
 
-        Output an Executive Summary in JSON format containing the major threats. Use this exact schema:
-        [
-          {{
-            "Vulnerability": "Name of the issue",
-            "Description": "Detailed explanation of the vulnerability and where it was found",
-            "Impact": "Potential business or technical impact",
-            "Remediation": "How to fix it"
-          }}
-        ]
+Scanner Output:
+{summary_text}
 
-        Return ONLY the JSON array, without any markdown fences like ```json.
-        """
+IMPORTANT PRIVACY RULES:
+1. Do NOT reveal or repeat any website name, domain, IP address, hostname, URL, endpoint path, or organization name found in the scanner output.
+2. Replace any such identifiers with neutral terms such as:
+   - "the target application"
+   - "the affected endpoint"
+   - "the web server"
+3. Your response must never expose the scanned website identity.
+
+Analysis Instructions:
+- Correlate findings across scanners when possible.
+- Focus only on meaningful security issues.
+- Ignore purely informational warnings or noise.
+- Prioritize vulnerabilities that present real security risks.
+- If multiple tools detect related issues, combine them into one coherent vulnerability explanation.
+
+Output Requirements:
+Return an Executive Security Summary in JSON format using the following schema:
+
+[
+  {{
+    "Vulnerability": "Name of the issue",
+    "Description": "Detailed explanation of the vulnerability and where it occurs in the target application without revealing any domain, IP, or URL",
+    "Impact": "Potential business or technical impact if exploited",
+    "Remediation": "Recommended mitigation steps to fix the vulnerability"
+  }}
+]
+
+Output Rules:
+- Return ONLY the JSON array.
+- Do NOT include markdown fences.
+- Do NOT include any website identifiers.
+"""
         
         model = genai.GenerativeModel('gemini-2.5-flash')
         response = await model.generate_content_async(prompt)

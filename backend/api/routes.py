@@ -110,9 +110,11 @@ def get_issue_descriptions():
 @router.post("/generate_pentest_response")
 async def generate_pentest_response(request_data: ScanSummaryRequest):
     scan_summary = request_data.scanSummary
+    print(f"Received scan summary for AI analysis: {json.dumps(scan_summary, indent=2)}")
     if not scan_summary:
         raise HTTPException(status_code=400, detail="No scan summary provided.")
     summary_text = json.dumps(scan_summary, indent=2)
+    print(f"Summary text for AI prompt: {summary_text}")
     prompt = f"""
     Provide me all the major possible threats which may occur due to the data in {summary_text}.Output should be in
     json format with fields in json being Vulnerability, Description, Impact, Remediation

@@ -348,6 +348,7 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
             "sqlmap": all_results.get("sqlmap_info", {}).get("vulnerabilities", [])
         }
 
+        print(f"AI Payload for Executive Summary: {json.dumps(ai_payload, indent=2)}")
         # Make the ONE AND ONLY Gemini API call
         ai_response = await generate_ai_response(target_url, ai_payload)
         
