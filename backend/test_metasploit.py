@@ -174,7 +174,8 @@ async def run_metasploit_test():
     # 4. Test Phase 3: AI Report Generation
     print("\n[*] 3. Sending raw output back to Gemini for reporting...")
     try:
-        msf_report = await generate_vulnerability_report(msf_results)
+        # msf_report = await generate_vulnerability_report(msf_results)
+        msf_report = await generate_vulnerability_report("http://testphp.vulnweb.com", msf_results)
         print("[+] Final JSON Report generated successfully:")
         print(json.dumps(msf_report, indent=2))
     except Exception as e:

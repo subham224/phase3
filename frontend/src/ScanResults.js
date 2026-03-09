@@ -7,6 +7,7 @@ import SkipfishResults from './SkipfishResults';
 import AiResponseAccordion from './AiResponseAccordion';
 import SqlmapResults from './SqlmapResults';
 import MetasploitResults from "./MetasploitResults";
+import DownloadReportButton from './DownloadReportButton';
 
 const getBackendUrl = () => {
   if (process.env.REACT_APP_API_URL) {
@@ -70,6 +71,12 @@ function ScanResults({ results }) {
 
   return (
     <div className="scan-results-container">
+      
+      {/* ============================================== */}
+      {/* 📥 PDF DOWNLOAD BUTTON (Fixed Top-Left) 📥 */}
+      {/* ============================================== */}
+      <DownloadReportButton results={results} targetUrl={results.target} aiThreats={threats} />
+
       {/* <h2 style={{ fontSize: '1.8rem', fontWeight: 'bold', marginBottom: '20px', color: '#60a5fa' }}>
         Pentest Report: {results.target}
       </h2> */}
@@ -86,8 +93,6 @@ function ScanResults({ results }) {
           <strong>AI Analysis Skipped: </strong> {backendAiError}
         </div>
       )}
-
-     
 
       {/* 1. WhatWeb */}
       {results.whatweb_info && results.whatweb_info.length > 0 && (
@@ -129,9 +134,6 @@ function ScanResults({ results }) {
       {/* Render AI Threats Accordion */}
       {threats && threats.length > 0 && (
         <div className="card" style={{ marginBottom: '30px', border: '1px solid #4f46e5', backgroundColor: '#1e1b4b' }}>
-          {/* <h3 style={{ color: '#818cf8', fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '15px' }}>
-            AI Executive Summary
-          </h3> */}
           <AiResponseAccordion 
             title="Combined Threat Analysis" 
             vulnerabilities={threats} 

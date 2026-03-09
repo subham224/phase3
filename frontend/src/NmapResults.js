@@ -98,7 +98,8 @@ function NmapResults({ data }) {
                     <td>{port.protocol}</td>
                     <td>{port.state}</td>
                     <td>{port.service || 'N/A'}</td>
-                    <td>{port.reason || "-"}</td>
+                    {/* <td>{port.reason || "-"}</td> */}
+                    <td>{port.reason === 'no-response' ? '--' : (port.reason || '-')}</td>
                   </tr>
                 ))}
               </tbody>

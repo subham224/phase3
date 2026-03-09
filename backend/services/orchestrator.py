@@ -325,12 +325,21 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
         msf_commands = await generate_msf_commands(target_url, metasploit_input)
         print(msf_commands)
 
+        # # Execute commands
+        # msf_results = await execute_commands(msf_commands, scan_id)
+        # print(msf_results)
+
+        # # AI analysis of raw output
+        # msf_report = await generate_vulnerability_report(msf_results)
+        # print(msf_report)
+
         # Execute commands
         msf_results = await execute_commands(msf_commands, scan_id)
         print(msf_results)
 
-        # AI analysis of raw output
-        msf_report = await generate_vulnerability_report(msf_results)
+        print("--------------------------------------------------------------------------------------------")
+        # AI analysis of raw output (Pass target_url here!)
+        msf_report = await generate_vulnerability_report(target_url, msf_results)
         print(msf_report)
 
         all_results["metasploit_info"] = {
@@ -366,8 +375,11 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
         }
 
         print(f"AI Payload for Executive Summary: {json.dumps(ai_payload, indent=2)}")
+        print("--------------------------------------------------------------------------------------------")
         # Make the ONE AND ONLY Gemini API call
         ai_response = await generate_ai_response(target_url, ai_payload)
+        print(f"AI Executive Summary Response: {json.dumps(ai_response, indent=2)}")
+        print("--------------------------------------------------------------------------------------------")
         
         # Save the executive summary
         ai_summary_file = os.path.join(SCAN_OUTPUT_DIR, f"ai_executive_summary_{scan_id}_{timestamp}.json")
