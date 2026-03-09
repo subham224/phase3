@@ -2,6 +2,8 @@ import asyncio
 import json
 import os
 
+from sqlalchemy import null
+
 # Import the actual functions from your project
 from services.metasploit_ai import generate_msf_commands
 from scanners.metasploit import execute_commands
@@ -19,26 +21,121 @@ async def run_metasploit_test():
     # 1. Define the mock vulnerability variable
     # This structures your provided findings exactly as the orchestrator would pass them
     mock_scan_results = {
-        "target": "http://testphp.vulnweb.com",
-        "wapiti": [
-            {"info": "Backup file http://testphp.vulnweb.com/index.bak found for http://testphp.vulnweb.com/index.php"},
-            {"info": "Backup file http://testphp.vulnweb.com/index.zip found for http://testphp.vulnweb.com/index.php"},
-            {"info": "Lack of anti CSRF token"}
-        ],
-        "sqlmap": [
-            {
-                "parameter": "searchFor",
-                "type": "POST",
-                "title": "Boolean-based blind, Error-based, Time-based blind",
-                "payload": "http://testphp.vulnweb.com/search.php?test=query"
-            }
-        ]
-    }
+    "target": "http://testphp.vulnweb.com/",
+
+    "whatweb": [
+        {
+            "target": "http://testphp.vulnweb.com/",
+            "http_status": 200,
+            "HTTPServer": "nginx/1.19.0",
+            "IP": "44.228.249.3",
+            "UncommonHeaders": [],
+            "X_Frame_Options": None,
+            "X_Powered_By": ["PHP/5.6.40-38+ubuntu20.04.1+deb.sury.org+1"],
+            "MetaGenerator": None,
+            "Title": "Home of Acunetix Art",
+            "X_XSS_Protection": None
+        }
+    ],
+
+    "wapiti": [
+        {
+            "info": "Backup file http://testphp.vulnweb.com/index.bak found for http://testphp.vulnweb.com/index.php"
+        },
+        {
+            "info": "Backup file http://testphp.vulnweb.com/index.zip found for http://testphp.vulnweb.com/index.php"
+        },
+        {
+            "info": "Lack of anti CSRF token"
+        }
+    ],
+
+    "skipfish": [
+        {
+            "severity": "2",
+            "type": "30501",
+            "url": "http://testphp.vulnweb.com/"
+        },
+        {
+            "severity": "1",
+            "type": "20102",
+            "url": "http://testphp.vulnweb.com/categories.php"
+        },
+        {
+            "severity": "1",
+            "type": "20102",
+            "url": "http://testphp.vulnweb.com/images/remark.gif"
+        }
+    ],
+
+    "nmap": {
+        "tcp_service_os_light": {
+            "scan_type": "tcp_service_os_light",
+            "hosts": [
+                {
+                    "address": "44.228.249.3",
+                    "hostname": "ec2-44-228-249-3.us-west-2.compute.amazonaws.com",
+                    "ports": [
+                        {
+                            "portid": "80",
+                            "protocol": "tcp",
+                            "state": "open",
+                            "service": "http",
+                            "version": None,
+                            "reason": "syn-ack",
+                            "cipher_details": []
+                        },
+                        {
+                            "portid": "443",
+                            "protocol": "tcp",
+                            "state": "filtered",
+                            "service": "https",
+                            "version": None,
+                            "reason": "no-response",
+                            "cipher_details": []
+                        }
+                    ],
+                    "os_details": None,
+                    "os_classes": [],
+                    "scripts": {}
+                }
+            ]
+        }
+    },
+
+    "sqlmap": [
+        {
+            "parameter": "searchFor",
+            "type": "POST",
+            "title": "Boolean-based blind, Error-based, Time-based blind",
+            "payload": "http://testphp.vulnweb.com/search.php?test=query"
+        }
+    ]
+}
+    
+    # {
+    #     "target": "http://testphp.vulnweb.com",
+    #     "wapiti": [
+    #         {"info": "Backup file http://testphp.vulnweb.com/index.bak found for http://testphp.vulnweb.com/index.php"},
+    #         {"info": "Backup file http://testphp.vulnweb.com/index.zip found for http://testphp.vulnweb.com/index.php"},
+    #         {"info": "Lack of anti CSRF token"}
+    #     ],
+    #     "sqlmap": [
+    #         {
+    #             "parameter": "searchFor",
+    #             "type": "POST",
+    #             "title": "Boolean-based blind, Error-based, Time-based blind",
+    #             "payload": "http://testphp.vulnweb.com/search.php?test=query"
+    #         }
+    #     ]
+    # }
 
     # 2. Test Phase 1: AI Command Generation
     print("[*] 1. Requesting commands from Gemini...")
     try:
-        msf_commands = await generate_msf_commands(mock_scan_results)
+        # msf_commands = await generate_msf_commands(mock_scan_results)
+        # msf_commands = await generate_msf_commands("[http://testphp.vulnweb.com](http://testphp.vulnweb.com)", mock_scan_results)
+        msf_commands = await generate_msf_commands("http://testphp.vulnweb.com",mock_scan_results)
         print(f"[+] AI successfully generated {len(msf_commands)} commands:")
         print(json.dumps(msf_commands, indent=2))
     except Exception as e:

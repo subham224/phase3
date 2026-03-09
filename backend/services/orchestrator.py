@@ -71,16 +71,28 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
         await update_progress("Invalid domain", 0)
         raise ValueError("Invalid exact domain parsed.")
 
+    # progress_weights = {
+    #     "whatweb": 5.0,
+    #     "harvester": 10.0,
+    #     "gobuster": 10.0,
+    #     "nmap_prep": 5.0,
+    #     "nmap": 40.0,
+    #     "wapiti": 20.0,
+    #     "skipfish": 25.0,
+    #     "sqlmap": 25.0,
+    #     "metasploit": 15.0
+    # }
+
     progress_weights = {
-        "whatweb": 5.0,
-        "harvester": 10.0,
-        "gobuster": 10.0,
-        "nmap_prep": 5.0,
-        "nmap": 40.0,
-        "wapiti": 20.0,
-        "skipfish": 25.0,
-        "sqlmap": 25.0,
-        "metasploit": 15.0
+        "whatweb": 2.0,      # Very fast
+        "harvester": 5.0,    # Fast
+        "gobuster": 8.0,     # Medium
+        "nmap_prep": 2.0,    # Very fast
+        "nmap": 20.0,        # Slow
+        "wapiti": 15.0,      # Slow
+        "skipfish": 18.0,    # Slow
+        "sqlmap": 15.0,      # Slow
+        "metasploit": 15.0   # Medium/Slow depending on module
     }
 
     # Step 1: WhatWeb
@@ -90,7 +102,8 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
         all_results["whatweb_info"] = [r.model_dump() for r in whatweb_results]
         if ai_whatweb_file:
             all_results["ai_output_files"]["whatweb"] = [ai_whatweb_file]
-        await update_progress("WhatWeb completed", progress_weights["whatweb"])
+        # await update_progress("WhatWeb completed", progress_weights["whatweb"])
+        await update_progress("WhatWeb completed", 0)
     except Exception as e:
         print(f"WhatWeb error: {e}")
         all_results["whatweb_info"] = [{"error": str(e)}]
@@ -300,7 +313,6 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
 
         # Prepare payload for AI module selection
         metasploit_input = {
-            "target": target_url,
             "whatweb": all_results.get("whatweb_info", []),
             "nmap": all_results.get("nmap_info", {}),
             "sqlmap": all_results.get("sqlmap_info", {}),
@@ -309,7 +321,8 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
         }
 
         # Generate commands via Gemini
-        msf_commands = await generate_msf_commands(metasploit_input)
+        # msf_commands = await generate_msf_commands(metasploit_input)
+        msf_commands = await generate_msf_commands(target_url, metasploit_input)
         print(msf_commands)
 
         # Execute commands
@@ -326,7 +339,8 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
             "report": msf_report
         }
 
-        await update_progress("Metasploit phase completed", 5)
+        # await update_progress("Metasploit phase completed", 5)
+        await update_progress("Metasploit phase completed", progress_weights["metasploit"])
 
     except Exception as e:
         print(f"Metasploit error: {e}")
@@ -343,7 +357,7 @@ async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, webso
         
         # We filter out empty results so we don't waste AI tokens
         ai_payload = {
-            "target": target_url,
+            # "target": target_url,
             "whatweb": [w for w in all_results.get("whatweb_info", []) if "error" not in w],
             "wapiti": all_results.get("wapiti_info", {}).get("vulnerabilities", []),
             "skipfish": all_results.get("skipfish_info", {}).get("issue_samples", []),

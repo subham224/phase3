@@ -46,6 +46,7 @@ async def run_harvester(
     subdomains: List[SubdomainResult] = []
 
     await update_progress("Executing theHarvester...", 0)
+    print(f"Executing theHarvester command: {' '.join(command)}")
 
     try:
         process = await asyncio.create_subprocess_exec(
@@ -172,6 +173,7 @@ async def run_gobuster(
     subdomains: List[SubdomainResult] = []
 
     await update_progress("Executing Gobuster...", 0)
+    print(f"Executing Gobuster command: {' '.join(command)}")
 
     try:
         process = await asyncio.create_subprocess_exec(

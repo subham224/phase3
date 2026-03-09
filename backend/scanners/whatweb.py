@@ -146,7 +146,8 @@ async def run_whatweb(target: str, scan_id: str, update_progress: callable, comm
                         return []
                         
                     result = WhatWebResult(
-                        target=res.get("target"),
+                        # target=res.get("target"),
+                        target=res.get("target", target),
                         http_status=http_status,
                         HTTPServer=get_plugin_string("HTTPServer"),
                         IP=get_plugin_string("IP"),
@@ -164,7 +165,8 @@ async def run_whatweb(target: str, scan_id: str, update_progress: callable, comm
         # --- THE FIX ---
         if filtered_results:
             with open(filtered_output_file, 'w', encoding='utf-8') as f_out:
-                json.dump([r.model_dump() for r in filtered_results], f_out, indent=4)
+                # json.dump([r.model_dump() for r in filtered_results], f_out, indent=4)
+                json.dump([r.model_dump(exclude={"target"}) for r in filtered_results], f_out, indent=4)
             # Generate AI response
             # ai_response = await generate_ai_response("WhatWeb", [r.model_dump() for r in filtered_results], target)
             # with open(ai_output_file, 'w', encoding='utf-8') as f_out:

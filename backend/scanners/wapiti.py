@@ -32,6 +32,7 @@ from utils.ai_analyzer import generate_ai_response
 
 async def wapiti_run_command(command: List[str], scan_id: str, update_progress: callable, command_increment: float) -> None:
     await update_progress(f"Executing Wapiti: {' '.join(command[:3])}", 0)
+    print(f"Executing Wapiti command: {' '.join(command)}")
     try:
         process = await asyncio.create_subprocess_exec(
             *command,

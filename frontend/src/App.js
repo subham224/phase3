@@ -144,7 +144,9 @@ export default function App() {
                 <div className="progress-bar" style={{ width: `${scanProgress}%` }}></div>
               </div>
             )}
-            {scanLoading && <div className="progress-text">{Math.round(scanProgress)}% - {progressStep}</div>}
+            {/* {scanLoading && <div className="progress-text">{Math.round(scanProgress)}% - {progressStep}</div>} */}
+            {scanLoading && <div className="progress-text">{Math.round(scanProgress)}%</div>}
+
 
             <div className="radio-group">
               <label>

@@ -67,7 +67,7 @@ def clean_domain(domain: str) -> str:
 
 def get_root_domain(url: str) -> str:
     """
-    Extracts the root registered domain (e.g., 'nist.edu' from 'https://nis.nist.edu').
+    Extracts the root registered domain (e.g., 'flipkart.com' from 'https://flipkart.com').
     This prevents Gobuster/theHarvester parse errors.
     """
     extracted = tldextract.extract(url)

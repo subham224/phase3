@@ -19,6 +19,7 @@ from utils.ai_analyzer import generate_ai_response
 
 async def skipfish_run_command(command: List[str], capture_output: bool, cwd: Optional[str], scan_id: str, update_progress: callable, command_increment: float) -> Optional[str]:
     await update_progress(f"Executing Skipfish: {' '.join(command[:3])}", 0)
+    print(f"Executing skipfish command: {' '.join(command)}")
     try:
         process = await asyncio.create_subprocess_exec(
             *command,
