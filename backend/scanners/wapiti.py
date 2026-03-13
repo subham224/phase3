@@ -85,7 +85,7 @@ async def run_wapiti(target: str, scan_type: ScanType, scan_id: str, update_prog
         
         commands = [
             "wapiti", "-u", target,
-            "-m", "all,-nikto,-sql,-permanentxss,-wp_enum,-ldap,-wapp,-brute_login_form,-xxe,-xss,-buster,-file,-exec,-log4shell,-spring4shell,-redirect,-timesql,-ssl",
+            "-m", "all,-nikto,-sql,-permanentxss,-wp_enum,-ldap,-wapp,-brute_login_form,-xxe,-xss,-buster,-file,-exec,-log4shell,-spring4shell,-redirect,-timesql,-methods,-ssl",
             "-d", "5", "--flush-attacks", "--no-bugreport", "-f", "json", "-o", raw_output_file
         ]
 
