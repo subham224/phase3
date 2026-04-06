@@ -1,0 +1,21 @@
+        ___
+       __H__
+ ___ ___[)]_____ ___ ___  {1.10.2#stable}
+|_ -| . [.]     | .'| . |
+|___|_  ["]_|_|_|__,|  _|
+      |_|V...       |_|   https://sqlmap.org
+
+[!] legal disclaimer: Usage of sqlmap for attacking targets without prior mutual consent is illegal. It is the end user's responsibility to obey all applicable local, state and federal laws. Developers assume no liability and are not responsible for any misuse or damage caused by this program
+
+[*] starting @ 19:03:18 /2026-03-13/
+
+[19:03:18] [INFO] loading tamper module 'between'
+do you want to check for the existence of site's sitemap(.xml) [y/N] N
+[19:03:18] [INFO] starting crawler for target URL 'http://kanopy.com'
+[19:03:18] [INFO] searching for links with depth 1
+[19:03:19] [INFO] searching for links with depth 2
+[19:03:20] [INFO] searching for links with depth 3
+do you want to normalize crawling results [Y/n] Y
+
+[*] ending @ 19:03:20 /2026-03-13/
+

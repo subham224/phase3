@@ -1,0 +1,388 @@
+# services/orchestrator.py
+
+import asyncio
+import json
+import os
+from urllib.parse import urlparse
+from datetime import datetime
+from fastapi import WebSocket
+from typing import Dict, Any, Optional
+from concurrent.futures import ThreadPoolExecutor
+import re
+
+from core.state import active_scans
+from core.config import SCAN_OUTPUT_DIR, NMAP_TARGETS_FILE
+from models.schemas import ScanType
+from utils.file_handlers import clear_scan_outputs, resolve_domain_sync, write_lines_to_file, get_root_domain
+from scanners.whatweb import run_whatweb
+from scanners.wapiti import run_wapiti
+from scanners.skipfish import run_skipfish
+from scanners.subdomains import run_sublist3r, run_gobuster
+from scanners.nmap import run_nmap_scans
+from scanners.sqlmap import run_sqlmap
+from scanners.metasploit import execute_commands
+from services.metasploit_ai import generate_msf_commands
+from services.metasploit_report import generate_vulnerability_report
+
+async def process_scan(target_url: str, scan_type: ScanType, scan_id: str, websocket: Optional[WebSocket] = None) -> Dict[str, Any]:
+    target_url = str(target_url)
+    print(f"Starting {scan_type.value} scan for: {target_url} with scan_id: {scan_id}")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    active_scans[scan_id] = {"progress": 0, "status": "running", "step": "Initializing", "error": None}
+
+    async def update_progress(step: str, increment: float):
+        if scan_id in active_scans:
+            active_scans[scan_id]["progress"] = min(active_scans[scan_id]["progress"] + increment, 100.0)
+            active_scans[scan_id]["step"] = step
+            if websocket:
+                try:
+                    await websocket.send_json({
+                        "scan_id": scan_id,
+                        "progress": active_scans[scan_id]["progress"],
+                        "step": step,
+                        "status": active_scans[scan_id]["status"],
+                        "error": active_scans[scan_id].get("error", None)
+                    })
+                except Exception as e:
+                    print(f"WebSocket send error for {scan_id}: {e}")
+                    active_scans[scan_id]["status"] = "failed"
+                    active_scans[scan_id]["error"] = f"WebSocket communication error: {str(e)}"
+
+    await clear_scan_outputs()
+    all_results = {
+        "whatweb_info": [],
+        "sublist3r_info": [],
+        "gobuster_info": [],
+        "nmap_info": {},
+        "wapiti_info": {},
+        "skipfish_info": {},
+        "sqlmap_info": {},
+        "metasploit_info": {},   
+        "ai_output_files": {}
+    }
+    
+    parsed_url = urlparse(target_url)
+    exact_domain = parsed_url.netloc.split(':')[0]
+    root_domain = get_root_domain(target_url)      
+
+    if not exact_domain:
+        active_scans[scan_id]["status"] = "failed"
+        active_scans[scan_id]["error"] = "Invalid exact domain parsed."
+        await update_progress("Invalid domain", 0)
+        raise ValueError("Invalid exact domain parsed.")
+
+    progress_weights = {
+        "whatweb": 2.0,      
+        "sublist3r": 5.0,    
+        "gobuster": 8.0,     
+        "nmap_prep": 2.0,    
+        "nmap": 20.0,        
+        "wapiti": 15.0,      
+        "skipfish": 18.0,    
+        "sqlmap": 15.0,      
+        "metasploit": 15.0   
+    }
+
+    # ==========================================
+    # STEP 1: WHATWEB
+    # ==========================================
+    await update_progress("Starting WhatWeb", 0)
+    try:
+        whatweb_results, ai_whatweb_file = await run_whatweb(target_url, scan_id, update_progress, progress_weights["whatweb"], timestamp)
+        all_results["whatweb_info"] = [r.model_dump() for r in whatweb_results]
+        if ai_whatweb_file:
+            all_results["ai_output_files"]["whatweb"] = [ai_whatweb_file]
+        await update_progress("WhatWeb completed", 0)
+    except Exception as e:
+        print(f"WhatWeb error: {e}")
+        all_results["whatweb_info"] = [{"error": str(e)}]
+        active_scans[scan_id]["error"] = str(e)
+        await update_progress("WhatWeb failed", 0)
+
+    # Determine Domains for Enumeration (Needed for Step 2 and 3)
+    domains_for_sub_enum = [root_domain]
+    #live_targets_from_whatweb = [urlparse(r.target).netloc.split(':')[0] for r in all_results.get("whatweb_info", []) if r.get('http_status') == 200 and urlparse(r.target).netloc]
+    live_targets_from_whatweb = [
+        urlparse(r["target"]).netloc.split(':')[0] 
+        for r in all_results.get("whatweb_info", []) 
+        if r.get("http_status") == 200 and "target" in r and urlparse(r["target"]).netloc
+    ]
+    domains_for_sub_enum.extend(live_targets_from_whatweb)
+    domains_for_sub_enum = list(set([get_root_domain(f"http://{d}") for d in filter(None, domains_for_sub_enum)]))
+
+    # ==========================================
+    # STEP 2: SUBLIST3R
+    # ==========================================
+    await update_progress("Starting Sublist3r (Subdomain Enumeration)", 0)
+    all_sublist3r_subdomains = []
+    try:
+        if domains_for_sub_enum:
+            limit = 100 if scan_type == ScanType.LIGHT else 300
+            sub_increment = progress_weights["sublist3r"] / len(domains_for_sub_enum)
+            
+            sublist3r_tasks = [run_sublist3r(domain, limit, scan_id, update_progress, sub_increment, timestamp) for domain in domains_for_sub_enum]
+            sublist3r_raw = await asyncio.gather(*sublist3r_tasks, return_exceptions=True)
+            
+            ai_sublist3r_files = []
+            for i, res in enumerate(sublist3r_raw):
+                if isinstance(res, Exception):
+                    print(f"Sublist3r task for {domains_for_sub_enum[i]} failed: {repr(res)}")
+                else:
+                    subdomains, ai_file = res
+                    all_sublist3r_subdomains.extend(subdomains)
+                    if ai_file:
+                        ai_sublist3r_files.append(ai_file)
+                        
+            all_results["sublist3r_info"] = [r.model_dump() for r in all_sublist3r_subdomains]
+            if ai_sublist3r_files:
+                all_results["ai_output_files"]["sublist3r"] = ai_sublist3r_files
+                
+        await update_progress("Sublist3r completed", 0)
+    except Exception as e:
+        print(f"Sublist3r error: {e}")
+        all_results["sublist3r_info"] = [{"error": str(e)}]
+        active_scans[scan_id]["error"] = str(e)
+        await update_progress("Sublist3r failed", 0)
+
+    # ==========================================
+    # STEP 3: GOBUSTER
+    # ==========================================
+    await update_progress("Starting Gobuster (Directory Enumeration)", 0)
+    all_gobuster_directories = []
+    try:
+        if domains_for_sub_enum:
+            gob_increment = progress_weights["gobuster"] / len(domains_for_sub_enum)
+            
+            gobuster_tasks = [run_gobuster(domain, scan_id, update_progress, gob_increment, timestamp) for domain in domains_for_sub_enum]
+            gobuster_raw = await asyncio.gather(*gobuster_tasks, return_exceptions=True)
+            
+            ai_gobuster_files = []
+            for i, res in enumerate(gobuster_raw):
+                if isinstance(res, Exception):
+                    print(f"Gobuster task for {domains_for_sub_enum[i]} failed: {repr(res)}")
+                else:
+                    directories, ai_file = res
+                    all_gobuster_directories.extend(directories)
+                    if ai_file:
+                        ai_gobuster_files.append(ai_file)
+                        
+            all_results["gobuster_info"] = [r.model_dump() for r in all_gobuster_directories]
+            if ai_gobuster_files:
+                all_results["ai_output_files"]["gobuster"] = ai_gobuster_files
+                
+        await update_progress("Gobuster completed", 0)
+    except Exception as e:
+        print(f"Gobuster error: {e}")
+        all_results["gobuster_info"] = [{"error": str(e)}]
+        active_scans[scan_id]["error"] = str(e)
+        await update_progress("Gobuster failed", 0)
+
+    # ==========================================
+    # STEP 4: NMAP (Prep & Scan)
+    # ==========================================
+    await update_progress("Preparing Nmap Targets", 0)
+    try:
+        unique_targets = set()
+        if exact_domain:
+            unique_targets.add(exact_domain)
+        for r in all_results.get("whatweb_info", []):
+            if r.get("IP"):
+                unique_targets.add(r["IP"])
+        
+        if scan_type == ScanType.DEEP:
+            for r in all_sublist3r_subdomains: 
+                if r.subdomain and not r.subdomain.startswith("[IP]:"):
+                    unique_targets.add(r.subdomain)
+                if r.resolved_ip:
+                    unique_targets.add(r.resolved_ip)
+                    
+        unique_targets = list(set(filter(None, unique_targets)))
+        final_nmap_targets = []
+        
+        if unique_targets:
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                loop = asyncio.get_event_loop()
+                resolution_tasks = []
+                for target_entry in unique_targets:
+                    if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", target_entry):
+                        resolution_tasks.append(asyncio.to_thread(lambda t=target_entry: t))
+                    else:
+                        resolution_tasks.append(loop.run_in_executor(executor, resolve_domain_sync, target_entry))
+                resolved_ips = await asyncio.gather(*resolution_tasks, return_exceptions=True)
+                for i, target_entry in enumerate(unique_targets):
+                    resolved_ip = resolved_ips[i]
+                    if isinstance(resolved_ip, Exception):
+                        final_nmap_targets.append(target_entry)
+                    elif resolved_ip:
+                        final_nmap_targets.append(resolved_ip)
+                    else:
+                        final_nmap_targets.append(target_entry)
+                        
+        final_nmap_targets = list(set(filter(None, final_nmap_targets)))
+        if not final_nmap_targets and exact_domain:
+            resolved_base_ip = await asyncio.to_thread(resolve_domain_sync, exact_domain)
+            if resolved_base_ip:
+                final_nmap_targets.append(resolved_base_ip)
+            else:
+                final_nmap_targets.append(exact_domain)
+                
+        if final_nmap_targets:
+            await write_lines_to_file(NMAP_TARGETS_FILE, final_nmap_targets)
+        else:
+            raise Exception("No valid Nmap targets could be determined")
+            
+        await update_progress("Nmap Targets Prepared", progress_weights["nmap_prep"])
+    except Exception as e:
+        print(f"Nmap Prep error: {e}")
+        all_results["nmap_info"] = {"error": f"Nmap target preparation failed: {str(e)}"}
+        active_scans[scan_id]["error"] = str(e)
+        await update_progress("Nmap Target Prep failed", 0)
+
+    # Execute Nmap
+    max_nmap_targets = 2
+    try:
+        if os.path.exists(NMAP_TARGETS_FILE) and os.stat(NMAP_TARGETS_FILE).st_size > 0:
+            with open(NMAP_TARGETS_FILE, "r") as f:
+                targets = [line.strip() for line in f.readlines() if line.strip()]
+            limited_targets = targets[:max_nmap_targets]
+            await write_lines_to_file(NMAP_TARGETS_FILE, limited_targets)
+            
+            nmap_commands = 6 if scan_type == ScanType.LIGHT else 8
+            nmap_increment = progress_weights["nmap"] / nmap_commands
+            await update_progress("Starting Nmap Scans", 0)
+            
+            nmap_results, ai_nmap_file = await run_nmap_scans(target_url, scan_type, scan_id, update_progress, nmap_increment, timestamp)
+            all_results["nmap_info"] = nmap_results
+            if ai_nmap_file:
+                all_results["ai_output_files"]["nmap"] = [ai_nmap_file]
+            await update_progress("Nmap Scans completed", 0)
+        else:
+            all_results["nmap_info"] = {"message": "No valid targets for Nmap scan."}
+            await update_progress("No Nmap targets", 0)
+    except Exception as e:
+        print(f"Nmap Scan error: {e}")
+        all_results["nmap_info"] = {"error": str(e)}
+        active_scans[scan_id]["error"] = str(e)
+        await update_progress("Nmap Scans failed", 0)
+
+    # ==========================================
+    # STEP 5: WAPITI
+    # ==========================================
+    await update_progress("Starting Wapiti", 0)
+    try:
+        wapiti_increment = progress_weights["wapiti"]
+        wapiti_results, ai_wapiti_file = await run_wapiti(target_url, scan_type, scan_id, update_progress, wapiti_increment, timestamp)
+        all_results["wapiti_info"] = wapiti_results.model_dump()
+        if ai_wapiti_file:
+            all_results["ai_output_files"]["wapiti"] = [ai_wapiti_file]
+        await update_progress("Wapiti completed", 0)
+    except Exception as e:
+        print(f"Wapiti error: {e}")
+        all_results["wapiti_info"] = [{"error": str(e)}]
+        active_scans[scan_id]["error"] = str(e)
+        await update_progress("Wapiti failed", 0)
+
+    # ==========================================
+    # STEP 6: SKIPFISH
+    # ==========================================
+    await update_progress("Starting Skipfish", 0)
+    try:
+        skipfish_commands = 1 if scan_type == ScanType.LIGHT else 2
+        skipfish_increment = progress_weights["skipfish"] / skipfish_commands
+        skipfish_results, ai_skipfish_file = await run_skipfish(target_url, scan_type, scan_id, update_progress, skipfish_increment, timestamp)
+        all_results["skipfish_info"] = skipfish_results.model_dump()
+        if ai_skipfish_file:
+            all_results["ai_output_files"]["skipfish"] = [ai_skipfish_file]
+        await update_progress("Skipfish completed", 0)
+    except Exception as e:
+        print(f"Skipfish error: {e}")
+        all_results["skipfish_info"] = [{"error": str(e)}]
+        active_scans[scan_id]["error"] = str(e)
+        await update_progress("Skipfish failed", 0)
+
+    # ==========================================
+    # STEP 7: SQLMAP
+    # ==========================================
+    await update_progress("Starting SQLMap", 0)
+    try:
+        sqlmap_results, ai_sqlmap_file = await run_sqlmap(target_url, scan_type, scan_id, update_progress, progress_weights["sqlmap"], timestamp)
+        all_results["sqlmap_info"] = sqlmap_results.model_dump()
+        if ai_sqlmap_file:
+            all_results["ai_output_files"]["sqlmap"] = [os.path.basename(ai_sqlmap_file)]
+        await update_progress("SQLMap completed", 0)
+    except Exception as e:
+        print(f"SQLMap error: {e}")
+        all_results["sqlmap_info"] = {"error": str(e)}
+        active_scans[scan_id]["error"] = str(e)
+        await update_progress("SQLMap failed", 0)
+
+    # ==========================================
+    # STEP 8: METASPLOIT AUTOMATED EXPLOITATION
+    # ==========================================
+    await update_progress("Starting Metasploit exploitation phase", 0)
+    try:
+        metasploit_input = {
+            "whatweb": all_results.get("whatweb_info", []),
+            "nmap": all_results.get("nmap_info", {}),
+            "sqlmap": all_results.get("sqlmap_info", {}),
+            "wapiti": all_results.get("wapiti_info", {}),
+            "skipfish": all_results.get("skipfish_info", {})
+        }
+
+        msf_commands = await generate_msf_commands(target_url, metasploit_input)
+        print(msf_commands)
+
+        msf_results = await execute_commands(msf_commands, scan_id)
+
+        print("--------------------------------------------------------------------------------------------")
+        msf_report = await generate_vulnerability_report(target_url, msf_results)
+
+        all_results["metasploit_info"] = {
+            "commands": msf_commands,
+            "results": msf_results,
+            "report": msf_report
+        }
+
+        await update_progress("Metasploit phase completed", progress_weights["metasploit"])
+
+    except Exception as e:
+        print(f"Metasploit error: {e}")
+        all_results["metasploit_info"] = {"error": str(e)}
+        active_scans[scan_id]["error"] = str(e)
+        await update_progress("Metasploit phase failed", 0)
+
+    # ==========================================
+    # STEP 9: GENERATE EXECUTIVE AI SUMMARY
+    # ==========================================
+    await update_progress("Generating AI Executive Summary", 0)
+    try:
+        from utils.ai_analyzer import generate_ai_response
+        
+        ai_payload = {
+            "whatweb": [w for w in all_results.get("whatweb_info", []) if "error" not in w],
+            "wapiti": all_results.get("wapiti_info", {}).get("vulnerabilities", []),
+            "skipfish": all_results.get("skipfish_info", {}).get("issue_samples", []),
+            "nmap": all_results.get("nmap_info", {}),
+            "sqlmap": all_results.get("sqlmap_info", {}).get("vulnerabilities", [])
+        }
+
+        print("--------------------------------------------------------------------------------------------")
+        ai_response = await generate_ai_response(target_url, ai_payload)
+        print("--------------------------------------------------------------------------------------------")
+        
+        ai_summary_file = os.path.join(SCAN_OUTPUT_DIR, f"ai_executive_summary_{scan_id}_{timestamp}.json")
+        with open(ai_summary_file, 'w', encoding='utf-8') as f_out:
+            json.dump(ai_response, f_out, indent=4)
+            
+        all_results["ai_output_files"]["executive_summary"] = [os.path.basename(ai_summary_file)]
+        
+        await update_progress("AI Summary Generated", 0)
+        
+    except Exception as e:
+        print(f"Error generating executive AI summary: {e}")
+        all_results["ai_output_files"]["executive_summary"] = []
+
+    # Finalize Scan
+    active_scans[scan_id]["status"] = "completed"
+    await update_progress("Scan completed", 0)
+    return all_results
