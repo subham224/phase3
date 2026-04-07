@@ -25,10 +25,12 @@ Ensure the following tools are installed and accessible via your system's `PATH`
 
 ---
 
-## 🚀 Installation & Setup Step-by-Step
+## Installation & Setup Step-by-Step
 
 ### Step 1: Clone the Repository
+
 git clone repo_link
+
 cd automated-pentesting-tool
 
 ### Step 2: Setup the Backend (FastAPI)
