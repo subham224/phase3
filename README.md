@@ -36,26 +36,28 @@ The backend manages the orchestration, WebSockets, and AI integration.
 
 1. Navigate to the backend directory:
 
-cd backend
+  cd backend
 
 2. Create and activate a virtual environment:
 
-python3 -m venv venv
-source venv/bin/activate  
+  python3 -m venv venv
+  
+  source venv/bin/activate  
 
 
 3. Install Python dependencies:
 
-pip install -r requirements.txt
+   pip install -r requirements.txt
 
 4. Configure Environment Variables:
 
-Create a .env file in the root of the backend/ directory and add your Google Gemini API Key:
-GEMINI_API_KEY="your_google_gemini_api_key_here"
+  Create a .env file in the root of the backend/ directory and add your Google Gemini API Key:
+  
+  GEMINI_API_KEY="your_google_gemini_api_key_here"
 
 5. Wordlists:
 
-Ensure any required wordlists for Gobuster or Sublist3r are present in the backend/wordlists/ directory as referenced in the code.
+  Ensure any required wordlists for Gobuster or Sublist3r are present in the backend/wordlists/ directory as referenced in the code.
 
 ### Step 3: Setup the Frontend (React)
 The frontend is a React application that provides the UI and real-time dashboard.
@@ -73,6 +75,7 @@ The frontend is a React application that provides the UI and real-time dashboard
 4. Configure Environment Variables:
 
   create a .env file in the frontend/ directory and paste:
+  
   REACT_APP_API_URL=http://localhost:8000
   
 ### Running the Application Locally
@@ -82,8 +85,9 @@ You need to run both the Backend and Frontend servers simultaneously in separate
 In your first terminal:
 Ensure your virtual environment is active, then run:
 
-cd backend
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+  cd backend
+  
+  uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 The backend is now running and accepting API calls and WebSocket connections at http://localhost:8000.
 
@@ -91,8 +95,9 @@ The backend is now running and accepting API calls and WebSocket connections at 
 In your second terminal:
 
 
-cd frontend
-npm start
+  cd frontend
+  
+  npm start
 
 The React application will automatically open in your default browser at http://localhost:3000.
 
